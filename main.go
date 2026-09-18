@@ -1,8 +1,7 @@
 // ksi-entertainment-service-miscellaneous のエントリーポイント。
 //
-// 現時点では gRPC Health Checking Protocol のみを登録した最小構成。
-// session_service.proto から生成される SessionService や、将来の
-// LiveRecordService の実装はフォローアップで結線する。
+// ここはコンポジションルート（依存関係を組み立てるだけの場所）。
+// 実際のロジックは internal/ 配下の各レイヤーに置く。層構成は README.md を参照。
 package main
 
 import (
@@ -10,9 +9,10 @@ import (
 	"net"
 	"os"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"github.com/kodmm/ksi-entertainment-service-miscellaneous/internal/application/command"
+	"github.com/kodmm/ksi-entertainment-service-miscellaneous/internal/application/query"
+	"github.com/kodmm/ksi-entertainment-service-miscellaneous/internal/infrastructure"
+	grpcserver "github.com/kodmm/ksi-entertainment-service-miscellaneous/internal/interfaces/grpc"
 )
 
 const defaultPort = "50051"
@@ -23,19 +23,16 @@ func main() {
 		port = defaultPort
 	}
 
+	store := infrastructure.NewInMemoryStore()
+	createLiveRecord := command.NewCreateLiveRecordHandler(store)
+	listLiveRecords := query.NewListLiveRecordsHandler(store)
+
+	server := grpcserver.New(createLiveRecord, listLiveRecords)
+
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatalf("failed to listen on port %s: %v", port, err)
 	}
-
-	server := grpc.NewServer()
-
-	healthServer := health.NewServer()
-	// 個別サービス名を指定しないと全体としての SERVING しか返せないため、
-	// ここでは overall status のみ SERVING にしている。個別サービスの
-	// 登録は実際の RPC を実装するタイミングで追加する。
-	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
-	healthpb.RegisterHealthServer(server, healthServer)
 
 	log.Printf("gRPC server listening on :%s", port)
 	if err := server.Serve(lis); err != nil {

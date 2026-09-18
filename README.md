@@ -23,3 +23,24 @@ go run .
 ```bash
 PORT=8080 go run .
 ```
+
+## 構成（Clean Architecture + CQRS）
+
+Clean Architectureの層分割に加えて、書き込み（コマンド）と読み取り（クエリ）を
+分離するCQRS（Command Query Responsibility Segregation）を採用している
+（Event Sourcingはmatching-serviceのみの採用で、このサービスでは使わない）。
+
+```
+internal/
+├── domain/              # LiveRecord エンティティ。他レイヤーに依存しない
+├── application/
+│   ├── command/         # 書き込み側ハンドラー（例: CreateLiveRecordHandler）
+│   └── query/           # 読み取り側ハンドラー（例: ListLiveRecordsHandler）
+├── infrastructure/       # 永続化の実装。現在はインメモリ実装のみ
+└── interfaces/
+    └── grpc/            # gRPCサーバーの構築・サービス登録（Health Checkなど）
+```
+
+`main.go` はコンポジションルートとして、上記の実装を組み立てて結線し、
+`Listen` するだけの役割に絞っている。
+
