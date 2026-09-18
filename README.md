@@ -24,6 +24,19 @@ go run .
 PORT=8080 go run .
 ```
 
+### Docker
+
+```bash
+docker build -t ksi-misc .
+docker run -p 50051:50051 ksi-misc
+```
+
+ポートを変更する場合は `PORT` 環境変数を渡す。
+
+```bash
+docker run -p 8080:8080 -e PORT=8080 ksi-misc
+```
+
 ## 構成（Clean Architecture + CQRS）
 
 Clean Architectureの層分割に加えて、書き込み（コマンド）と読み取り（クエリ）を
